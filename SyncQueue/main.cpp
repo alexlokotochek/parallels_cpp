@@ -5,8 +5,11 @@
 #include <chrono>
 #include <random>
 #include <stack>
+#include <utility>
 #include <type_traits>
 #include <cstddef>
+#include <list>
+#include <deque>
 #include <queue>
 
 using namespace std;
@@ -17,71 +20,64 @@ std::random_device rd;
 std::mt19937 gen(rd());
 std::uniform_int_distribution<> distr(5, 50);
 
-template <typename T>
-struct has_push_method {
-    struct dummy { /* что-то */ };
+namespace detection {
 
-    template <typename C, typename P>
-    static auto sfinae(P * p) -> decltype(std::declval<C>().push(*p), std::true_type());
+    template <class C>
+    class operations{
+    public:
+        static void push_impl(const typename C::value_type &v, C &_data) {
+            _data.push_back(v);
+        }
+        static typename C::value_type pop_impl(C &_data) {
+            auto popped = _data.front();
+            _data.pop_back();
+            return popped;
+        }
+    };
 
-    template <typename, typename>
-    static std::false_type sfinae(...);
+    template <typename T>
+    class operations<stack<T>>{
+    public:
+        static void push_impl(const T &v, stack<T> &_data) {
+            _data.push(v);
+        }
+        static T pop_impl(stack<T> &_data) {
+            auto popped = _data.top();
+            _data.pop();
+            return popped;
+        }
+    };
 
-    typedef decltype(sfinae<T, dummy>(nullptr)) type;
-    static const bool value = std::is_same<std::true_type, decltype(sfinae<T, dummy>(nullptr))>::value;
-};
+    template <typename T>
+    class operations<queue<T>>{
+    public:
+        static void push_impl(const T &v, queue<T> &_data) {
+            _data.push(v);
+        }
+        static T pop_impl(queue<T> &_data) {
+            auto popped = _data.front();
+            _data.pop();
+            return popped;
+        }
+    };
+
+
+}
 
 template <class Array>
 class SyncQueue {
+
     typedef typename Array::value_type value_type;
     Array data;
     mutex mtx;
     condition_variable queueNotEmpty;
 
-    template <class C>
-    void _push(value_type &v, C &_data) {
-        _data.push(v);
-    }
-
-    template <class C>
-    void _push_back(value_type &v, C &_data){
-        _data.push_back(v);
-    }
-
-    void push_impl(value_type &v) {
-        if (has_push_method<Array>::value) {
-            _push(v, data);
-        }else{
-            _push_back(v, data);
-        }
-    };
-
-    template <class C>
-    value_type _pop(C &_data) {
-        return _data.pop();
-    }
-
-    template <class C>
-    value_type _pop_back(C &_data) {
-        auto popped = _data.front();
-        _data.pop_back();
-        return popped;
-    }
-
-    value_type pop_impl() {
-        if (has_push_method<Array>::value) {
-            return _pop(data);
-        } else {
-            return _pop_back(data);
-        }
-    };
-
-
 public:
 
     void push(value_type &v){
         unique_lock<mutex> ul(mtx);
-        push_impl(v);
+        detection::operations<Array> opclass;
+        opclass.push_impl(v, data);
         ul.unlock();
         queueNotEmpty.notify_one();
     };
@@ -93,7 +89,8 @@ public:
                                    std::chrono::milliseconds(500),
                                    handler) == true)
         {
-            popped = pop_impl();
+            detection::operations<Array> opclass;
+            popped = opclass.pop_impl(data);
             ul.unlock();
             return true;
         } else {
@@ -108,7 +105,8 @@ public:
             ul.unlock();
             return false;
         }
-        popped = pop_impl();
+        detection::operations<Array> opclass;
+        popped = opclass.pop_impl(data);
         ul.unlock();
         return true;
     }
@@ -125,19 +123,6 @@ public:
     }
 };
 
-//template<class C>
-//void SyncQueue::push_impl(value_type &v) {
-//    data.push_back(v);
-//}
-//
-//template<class C>
-//value_type SyncQueue::pop_impl() {
-//    return data.pop();
-//};
-
-
-
-
 
 void thread_worker_vector(int myId, SyncQueue<vector<int>> &q) {
     int iters = 0;
@@ -148,8 +133,13 @@ void thread_worker_vector(int myId, SyncQueue<vector<int>> &q) {
         }
         if (iters % 6 == 0){
             int popped = -1;
+            // на ожидание стоит таймаут 500мс,
+            // чтобы нормально протестировать
             bool res = q.popOrSleep(popped);
             if (res == true){
+                // все элементы положительны, значит
+                // если мы кого-то вытащили,
+                // то он не может быть равен -1
                 assert(popped != -1);
                 printf("successfully sleepPopped %d\n", popped);
             } else {
@@ -160,6 +150,9 @@ void thread_worker_vector(int myId, SyncQueue<vector<int>> &q) {
             int popped = -1;
             bool res = q.popNoSleep(popped);
             if (res == true) {
+                // все элементы положительны, значит
+                // если мы кого-то вытащили,
+                // то он не может быть равен -1
                 assert(popped != -1);
                 printf("successfully noSleepPopped %d\n", popped);
             } else {
@@ -241,13 +234,13 @@ int main(){
 
     testVector();
 
-    cout << endl << endl << "success vector";
+    cout << endl << endl << "success for vector";
 
     cout << endl << endl << "start stack" << endl << endl;
 
     testStack();
 
-    cout << endl << endl << "success stack";
+    cout << endl << endl << "success for stack";
 
     return 0;
 }
