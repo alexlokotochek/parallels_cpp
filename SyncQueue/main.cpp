@@ -5,6 +5,7 @@
 #include <chrono>
 #include <random>
 #include <stack>
+#include <type_traits>
 #include <cstddef>
 #include <queue>
 
@@ -17,29 +18,19 @@ std::mt19937 gen(rd());
 std::uniform_int_distribution<> distr(5, 50);
 
 template <typename T>
-class detect {
-public:
+struct has_push_method {
+    struct dummy { /* что-то */ };
 
-    template<class C>
-    static void push_impl(T &v);
+    template <typename C, typename P>
+    static auto sfinae(P * p) -> decltype(std::declval<C>().push(*p), std::true_type());
 
-    template<class C>
-    static T pop_impl();
+    template <typename, typename>
+    static std::false_type sfinae(...);
 
-    template<stack<T> C>
-    static void push_impl<C>(T &v) {}
-
-    template<queue<T> C>
-    static void push_impl<C>(T &v) {}
-
-    template<stack<T> C>
-    static T pop_impl<C>() {}
-
-    template<queue<T> C>
-    static T pop_impl<C>() {}
+    typedef decltype(sfinae<T, dummy>(nullptr)) type;
+    static const bool value = std::is_same<std::true_type, decltype(sfinae<T, dummy>(nullptr))>::value;
 };
 
-//push_back() и pop_back(): vector<>, deque<>, list<>
 template <class Array>
 class SyncQueue {
     typedef typename Array::value_type value_type;
@@ -47,43 +38,44 @@ class SyncQueue {
     mutex mtx;
     condition_variable queueNotEmpty;
 
+    template <class C>
+    void _push(value_type &v, C &_data) {
+        _data.push(v);
+    }
+
+    template <class C>
+    void _push_back(value_type &v, C &_data){
+        _data.push_back(v);
+    }
+
     void push_impl(value_type &v) {
-        detect::push_impl(v);
+        if (has_push_method<Array>::value) {
+            _push(v, data);
+        }else{
+            _push_back(v, data);
+        }
+    };
+
+    template <class C>
+    value_type _pop(C &_data) {
+        return _data.pop();
+    }
+
+    template <class C>
+    value_type _pop_back(C &_data) {
+        auto popped = _data.front();
+        _data.pop_back();
+        return popped;
     }
 
     value_type pop_impl() {
-        detect::pop_impl();
-    }
-//    template <class C>
-//    void push_impl(value_type &v);
-//
-//
-//    template <class C>
-//    value_type pop_impl();
-//
-//    template<>
-//    void push_impl<stack<value_type>>(value_type &v) {
-//        data.push(v);
-//    };
-//
-//    template<>
-//    void push_impl<queue<value_type>>(value_type &v) {
-//        data.push(v);
-//    };
-//
-//    template<>
-//    value_type pop_impl<stack<value_type>>() {
-//        auto popped = data.front();
-//        data.pop_back();
-//        return popped;
-//    }
-//
-//    template<>
-//    value_type pop_impl<queue<value_type>>() {
-//        auto popped = data.front();
-//        data.pop_back();
-//        return popped;
-//    }
+        if (has_push_method<Array>::value) {
+            return _pop(data);
+        } else {
+            return _pop_back(data);
+        }
+    };
+
 
 public:
 
