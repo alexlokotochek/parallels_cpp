@@ -1,32 +1,4 @@
 # parallels_cpp
-Для volatile необходимо и достаточно memory_order_relaxed, так как все действия будут выполнены атомарно из-за блокирования futex'a.    
+tasks: https://docs.google.com/document/d/1lX3xppQ7kHjiUbNu_wQef13oCSNhhznKCjoQRvvMwzM
 
-
-Для обычной переменной необходим memory_order_aquire и memory_order_release, так как во время захвата и освобождения может быть нарушен барьер памяти и непонятно, кто победит, то есть операции могут осуществляться после unlock или до lock по воле компилятора.
-достаточно - потому что кроме lock и unlock в принципе больше ничего не происходит и ничто не выйдет из критической секции.   
-
-Скорость старого Futex ~ 10 секунд, нового VolatileFutex — 9.4 секунды, нового Futex — 8.7 секунд.
-
-
-
-
-
-Cache ping pong:
-
-without ping-pong: 3.82673 seconds
-
-ping-pong: 7.61664 seconds
-
-  Имя процессора:	Intel Core i5
-  
-  Скорость процессора:	2,5 GHz
-  
-  Количество процессоров:	1
-  
-  Общее количество ядер:	2
-  
-  Кэш 2-го уровня (в каждом ядре):	256 КБ
-  
-  Кэш L3:	3 МБ
-  
-  Cache line size: 64
+readme.md are inside dirs
