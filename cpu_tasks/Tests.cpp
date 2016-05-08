@@ -4,7 +4,6 @@
 
 #include "Tests.h"
 
-
 void workerVolatile(int &id, FutexVolatile &ftx, volatile int &protected_var) {
     while (iter > 0) {
         ftx.lock();

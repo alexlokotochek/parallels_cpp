@@ -34,7 +34,7 @@ public:
 
     FutexVolatile(): ownerId(thread::id()) {};
 
-    FutexVolatile(const Futex &) = delete;
+    FutexVolatile(const FutexVolatile &) = delete;
 
     void lock();
     bool try_lock();
