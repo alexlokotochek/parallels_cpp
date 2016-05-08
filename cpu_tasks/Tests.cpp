@@ -62,7 +62,10 @@ void Tests::startVolatileTest() {
     vector<thread> threads_volatile;
 
     for (int i = 0; i < 10; ++i) {
-        threads_volatile.push_back(thread (std::ref(workerVolatile), i, std::ref(ftx_volatile), std::ref(protected_var)));
+        threads_volatile.push_back(thread (workerVolatile,
+                                           i,
+                                           std::ref(ftx_volatile),
+                                           std::ref(protected_var)));
     }
 
     for (auto &thr : threads_volatile) {

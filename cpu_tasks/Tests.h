@@ -22,15 +22,9 @@ Futex ftx;
 FutexVolatile ftx_volatile;
 
 class Tests {
-//
-//    void worker(int &id,
-//                Futex &ftx,
-//                int &protected_var);
-//    void workerVolatile(int &id,
-//                        FutexVolatile &ftx,
-//                        volatile int &protected_var);
 
 public:
+
     void startTest();
     void startVolatileTest();
 
