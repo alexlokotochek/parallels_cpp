@@ -4,7 +4,7 @@
 
 #include "Tests.h"
 
-void workerVolatile(int &id, FutexVolatile &ftx, volatile int &protected_var) {
+void workerVolatile(int id, FutexVolatile &ftx, volatile int &protected_var) {
     while (iter > 0) {
         ftx.lock();
         if (iter == 0) {
@@ -30,7 +30,7 @@ void workerVolatile(int &id, FutexVolatile &ftx, volatile int &protected_var) {
     }
 }
 
-void worker(int &id, Futex &ftx, int &protected_var) {
+void worker(int id, Futex &ftx, int &protected_var) {
     while (iter > 0) {
         ftx.lock();
         if (iter == 0) {
